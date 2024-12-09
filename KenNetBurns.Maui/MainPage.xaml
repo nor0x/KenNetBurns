@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 xmlns:kb="clr-namespace:KenNetBurns;assembly=KenNetBurns"
+			 Shell.NavBarIsVisible="False"
+			 Background="White"
+             x:Class="KenNetBurns.Maui.MainPage">
+
+	<VerticalStackLayout Margin="0,12,0,0" Spacing="12">
+		<Label Text="Ken Burns Effect" HorizontalOptions="Center" VerticalOptions="End" FontSize="20" />
+		<kb:KBView x:Name="kbView" WidthRequest="1000" HeightRequest="600" />
+		<HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
+			<Button Text="New Image" Clicked="NewImage_Clicked" />
+			<Button x:Name="StateToggleButton" Text="Pause" Clicked="ToggleState_Clicked" />
+		</HorizontalStackLayout>
+		<HorizontalStackLayout HorizontalOptions="Center">
+		<Entry x:Name="UrlEntry" Placeholder="enter image url..." />
+			<Button Text="Load Image" Clicked="LoadImage_Clicked" />
+		</HorizontalStackLayout>
+		<Label x:Name="StatusLabel" Text="..."  TextColor="Black" HorizontalOptions="Center" />
+	</VerticalStackLayout>
+</ContentPage>
