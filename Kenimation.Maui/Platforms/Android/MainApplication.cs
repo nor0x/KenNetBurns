@@ -1,7 +1,8 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace KenNetBurns.Maui;
+namespace Kenimation.Maui;
+
 [Application]
 public class MainApplication : MauiApplication
 {

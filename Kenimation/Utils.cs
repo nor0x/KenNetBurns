@@ -5,7 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace KenNetBurns;
+namespace Kenimation;
+
 public static class Utils
 {
 	public static void SafeFireAndForget(this Task task, bool returnToCallingContext = false, Action<Exception> onException = null)

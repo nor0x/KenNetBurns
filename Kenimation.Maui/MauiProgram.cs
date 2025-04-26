@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 
-namespace KenNetBurns.Maui;
+namespace Kenimation.Maui;
+
 public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()

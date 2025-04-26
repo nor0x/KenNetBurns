@@ -1,4 +1,4 @@
-﻿namespace KenNetBurns.Maui;
+﻿namespace Kenimation.Maui;
 
 public partial class App : Application
 {

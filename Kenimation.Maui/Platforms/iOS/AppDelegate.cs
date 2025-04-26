@@ -1,6 +1,7 @@
 ﻿using Foundation;
 
-namespace KenNetBurns.Maui;
+namespace Kenimation.Maui;
+
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate
 {

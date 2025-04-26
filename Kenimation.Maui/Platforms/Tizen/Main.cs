@@ -2,7 +2,7 @@ using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 using System;
 
-namespace KenNetBurns.Maui;
+namespace Kenimation.Maui;
 
 internal class Program : MauiApplication
 {

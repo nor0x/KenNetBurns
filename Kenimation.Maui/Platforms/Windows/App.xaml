@@ -1,8 +1,8 @@
 ﻿<maui:MauiWinUIApplication
-    x:Class="KenNetBurns.Maui.WinUI.App"
+    x:Class="Kenimation.Maui.WinUI.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:maui="using:Microsoft.Maui"
-    xmlns:local="using:KenNetBurns.Maui.WinUI">
+    xmlns:local="using:Kenimation.Maui.WinUI">
 
 </maui:MauiWinUIApplication>

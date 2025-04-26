@@ -1,7 +1,8 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace KenNetBurns.Maui;
+namespace Kenimation.Maui;
+
 public class Program
 {
 	// This is the main entry point of the application.
