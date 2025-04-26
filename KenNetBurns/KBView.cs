@@ -1,4 +1,5 @@
-﻿using Microsoft.Maui.Controls;
+﻿#define CPU
+using Microsoft.Maui.Controls;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -6,239 +7,222 @@ using System.Diagnostics;
 
 namespace KenNetBurns;
 
+public class KBKeyframe
+{
+	public float Scale { get; set; }
+	public SKPoint Position { get; set; }
+	public float Time { get; set; } // 0.0 to 1.0
+}
+
+public enum AnimationMode
+{
+	Loop,
+	ReverseAndLoop,
+	PlayOnce,
+	PlayOnceAndStop
+}
+
+
+#if CPU
 public class KBView : SKCanvasView
+#else
+public class KBView : SKGLView
+#endif
 {
 	private static readonly TimeSpan FrameDelay = TimeSpan.FromMilliseconds(1000 / 60);
 	private SKMatrix _matrix = SKMatrix.Identity;
-	private Transition _currentTransition;
-	private SKRect _viewportRect;
-	private SKRect _drawableRect;
-	private long _elapsedTime;
-	private long _lastFrameTime;
-	private bool _paused;
-	private bool _initialized;
+	private bool _paused = false;
+	private SKBitmap _currentImage;
+	private readonly Stopwatch _stopwatch = new();
+	private float _animationDuration = 5000f;
+	private List<KBKeyframe> _keyframes = new();
+	private bool _isReversing = false;
+	public AnimationMode Mode { get; set; } = AnimationMode.ReverseAndLoop;
 
-	public event EventHandler<Transition> TransitionStart;
-	public event EventHandler<Transition> TransitionEnd;
-
-	public static readonly BindableProperty ImageSourceProperty = BindableProperty.Create(
-		nameof(ImageSource), typeof(ImageSource), typeof(KBView), null, propertyChanged: OnImageSourceChanged);
-
-	public ImageSource ImageSource
-	{
-		get => (ImageSource)GetValue(ImageSourceProperty);
-		set => SetValue(ImageSourceProperty, value);
-	}
-
-	public static readonly BindableProperty TransitionGeneratorProperty = BindableProperty.Create(
-		nameof(TransitionGenerator), typeof(ITransitionGenerator), typeof(KBView), new RandomTransitionGenerator());
-
-	public ITransitionGenerator TransitionGenerator
-	{
-		get => (ITransitionGenerator)GetValue(TransitionGeneratorProperty);
-		set => SetValue(TransitionGeneratorProperty, value);
-	}
 
 	public KBView()
 	{
-		_initialized = true;
+		EnableTouchEvents = false;
 		PaintSurface += OnPaintSurface;
 	}
 
-	private static void OnImageSourceChanged(BindableObject bindable, object oldValue, object newValue)
+	public void LoadImage(Stream imageStream)
 	{
-		var view = (KBView)bindable;
-		view.HandleImageChanged();
+		_currentImage = SKBitmap.Decode(imageStream);
+		InvalidateSurface();
 	}
 
-	private void HandleImageChanged()
+	public void SetKeyframes(List<KBKeyframe> keyframes)
 	{
-		LoadImage(ImageSource).ContinueWith((task) =>
+		if (keyframes == null || keyframes.Count == 0)
 		{
-			if (task.Result is not null)
+			// Default keyframes if none provided
+			_keyframes = new List<KBKeyframe>
+		{
+			new KBKeyframe { Scale = 1.0f, Position = new SKPoint(0, 0), Time = 0 },
+			new KBKeyframe { Scale = 1.5f, Position = new SKPoint(0.1f, 0.1f), Time = 1 }
+		};
+		}
+		else
+		{
+			// Validate and clamp keyframe values
+			var validatedKeyframes = keyframes.Select(k => new KBKeyframe
 			{
-				_currentBitmap = task.Result;
+				// Ensure scale is at least 1.0 to cover the view
+				Scale = Math.Max(1.0f, k.Scale),
 
-				_drawableRect = new SKRect(0, 0, _currentBitmap.Width, _currentBitmap.Height);
-				if(Width > 0 && Height > 0)
-				{
-					_viewportRect = new SKRect(0, 0, (float)Width, (float)Height);
-					StartNewTransition();
-					InvalidateSurface();
-				}
+				// Clamp position values based on scale to prevent image from going out of bounds
+				Position = new SKPoint(
+					ClampPosition(k.Position.X, k.Scale),
+					ClampPosition(k.Position.Y, k.Scale)
+				),
+				Time = Math.Clamp(k.Time, 0.0f, 1.0f)
+			}).OrderBy(k => k.Time).ToList();
+
+			_keyframes = validatedKeyframes;
+		}
+		InvalidateSurface();
+	}
+
+	private float ClampPosition(float position, float scale)
+	{
+		// Calculate maximum allowed position based on scale
+		// As scale increases, we can move the image further without showing empty space
+		float maxOffset = (scale - 1.0f) / 2.0f;
+
+		// Clamp position between -maxOffset and maxOffset
+		return Math.Clamp(position, -maxOffset, maxOffset);
+	}
+
+	private (float scale, SKPoint position) InterpolateKeyframes(float progress)
+	{
+		if (_keyframes.Count == 0) return (1.0f, new SKPoint(0, 0));
+		if (_keyframes.Count == 1) return (_keyframes[0].Scale, _keyframes[0].Position);
+
+		// Find the keyframes to interpolate between
+		var nextFrame = _keyframes.FirstOrDefault(k => k.Time >= progress);
+		if (nextFrame == null) return (_keyframes.Last().Scale, _keyframes.Last().Position);
+
+		var prevFrame = _keyframes.Where(k => k.Time <= progress).LastOrDefault() ?? _keyframes.First();
+
+		// Calculate interpolation factor
+		float frameDuration = nextFrame.Time - prevFrame.Time;
+		float frameProgress = frameDuration > 0 ? (progress - prevFrame.Time) / frameDuration : 0;
+
+		// Interpolate values
+		float scale = prevFrame.Scale + (nextFrame.Scale - prevFrame.Scale) * frameProgress;
+		float x = prevFrame.Position.X + (nextFrame.Position.X - prevFrame.Position.X) * frameProgress;
+		float y = prevFrame.Position.Y + (nextFrame.Position.Y - prevFrame.Position.Y) * frameProgress;
+
+		return (scale, new SKPoint(x, y));
+	}
+
+	public void StartAnimation()
+	{
+		_stopwatch.Start();
+		Dispatcher.StartTimer(FrameDelay, () =>
+		{
+			if (!_paused && _currentImage != null)
+			{
+				InvalidateSurface();
+				return true;
 			}
+			return !_paused;
 		});
 	}
 
-	protected override void OnSizeAllocated(double width, double height)
-	{
-		base.OnSizeAllocated(width, height);
-		if (_initialized)
-		{
-			_viewportRect = new SKRect(0, 0, (float)width, (float)height);
-			if (_currentBitmap is not null)
-			{
-				StartNewTransition();
-				InvalidateSurface();
-			}
-		}
-	}
-
+#if CPU
 	private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
-	{
-		try
-		{
-			var displayScale = DeviceDisplay.MainDisplayInfo.Density;
-			Debug.WriteLine($"Display Scale: {displayScale}");
+#else
 
-			if (!_paused && _drawableRect != SKRect.Empty)
-			{
-				if (_currentTransition == null)
+	private void OnPaintSurface(object sender, SKPaintGLSurfaceEventArgs e)
+#endif
+	{
+		if (_currentImage == null) return;
+
+		var canvas = e.Surface.Canvas;
+#if CPU
+		var info = e.Info;
+#else
+		var info = new SKImageInfo(e.BackendRenderTarget.Width, e.BackendRenderTarget.Height);
+#endif
+
+		float elapsed = _stopwatch.ElapsedMilliseconds % (_animationDuration * 2);
+		float progress;
+
+		switch (Mode)
+		{
+			case AnimationMode.ReverseAndLoop:
+				_isReversing = elapsed > _animationDuration;
+				progress = elapsed / _animationDuration;
+				if (_isReversing)
 				{
-					StartNewTransition();
+					progress = 2.0f - progress; // Convert 1.0->2.0 to 1.0->0.0
 				}
+				break;
 
-				if (_currentTransition?.DestinyRect != null)
+			case AnimationMode.PlayOnce:
+				progress = Math.Min(elapsed / _animationDuration, 1.0f);
+				if (progress >= 1.0f)
 				{
-					var now = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond;
-					_elapsedTime += now - _lastFrameTime;
-					_lastFrameTime = now;
-
-					var currentRect = _currentTransition.GetInterpolatedRect(_elapsedTime);
-
-					float widthScale = _drawableRect.Width / currentRect.Width;
-					float heightScale = _drawableRect.Height / currentRect.Height;
-					float currRectToDrwScale = Math.Min(widthScale, heightScale);
-
-					float vpWidthScale = _viewportRect.Width / currentRect.Width;
-					float vpHeightScale = _viewportRect.Height / currentRect.Height;
-					float currRectToVpScale = Math.Min(vpWidthScale, vpHeightScale);
-
-					/*
-					 *float vpWidthScale = mViewportRect.width() / currentRect.width();
-                    float vpHeightScale = mViewportRect.height() / currentRect.height();
-                    float currRectToVpScale = Math.min(vpWidthScale, vpHeightScale); 
-					 */
-
-
-					float totalScale = currRectToDrwScale * currRectToVpScale;
-
-					float translX = totalScale * (_drawableRect.MidX - currentRect.Left);
-					float translY = totalScale * (_drawableRect.MidY - currentRect.Top);
-
-					/* Performs matrix transformations to fit the content
-                       of the current rect into the entire view. */
-					//mMatrix.reset();
-					//mMatrix.postTranslate(-mDrawableRect.width() / 2, -mDrawableRect.height() / 2);
-					//mMatrix.postScale(totalScale, totalScale);
-					//mMatrix.postTranslate(translX, translY);
-
-					//totalScale *= (float)displayScale;
-
-					e.Surface.Canvas.ResetMatrix();
-					_matrix = e.Surface.Canvas.TotalMatrix;
-					_matrix = _matrix.PostConcat(SKMatrix.CreateTranslation(-_drawableRect.Width / 2, -_drawableRect.Height / 2));
-
-					/*
-					 *if (!mTransGen.isCroppingImage()) {
-                        mMatrix.postTranslate((mViewportRect.width() - mDrawableRect.width()) / 2,
-                                (mViewportRect.height() - mDrawableRect.height()) / 2);
-                    } 
-					 */
-
-					if (!TransitionGenerator.IsCroppingImage())
-					{
-						_matrix = _matrix.PostConcat(SKMatrix.CreateTranslation((_viewportRect.Width - _drawableRect.Width) / 2,
-								(_viewportRect.Height - _drawableRect.Height) / 2));
-					}
-
-					_matrix = _matrix.PostConcat(SKMatrix.CreateScale(totalScale, totalScale));
-					_matrix = _matrix.PostConcat(SKMatrix.CreateTranslation(translX, translY));
-
-
-
-					e.Surface.Canvas.SetMatrix(_matrix);
-					e.Surface.Canvas.Clear(SKColors.Orange);
-
-					DrawImageSource(e.Surface.Canvas, ImageSource);
-
-					if (_elapsedTime >= _currentTransition.Duration)
-					{
-						FireTransitionEnd(_currentTransition);
-						StartNewTransition();
-					}
+					_paused = true;
 				}
-			}
+				break;
+
+			case AnimationMode.PlayOnceAndStop:
+				progress = Math.Min(elapsed / _animationDuration, 1.0f);
+				if (progress >= 1.0f)
+				{
+					_paused = true;
+					progress = 1.0f;
+				}
+				break;
+
+			case AnimationMode.Loop:
+			default:
+				progress = (elapsed % _animationDuration) / _animationDuration;
+				break;
 		}
-		catch(Exception ex)
+
+		var (effectScale, position) = InterpolateKeyframes(progress);
+
+
+		// Calculate aspect ratios and base scale as before
+		float viewAspect = (float)info.Width / info.Height;
+		float imageAspect = (float)_currentImage.Width / _currentImage.Height;
+
+		float baseScale;
+		if (viewAspect > imageAspect)
 		{
-			Debug.WriteLine(ex);
+			baseScale = (float)info.Width / _currentImage.Width;
 		}
-	}
-
-	private void StartNewTransition()
-	{
-		if (_drawableRect == SKRect.Empty || _viewportRect == SKRect.Empty)
-			return;
-
-		_currentTransition = TransitionGenerator.GenerateNextTransition(_drawableRect, _viewportRect);
-		_elapsedTime = 0;
-		_lastFrameTime = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond;
-		FireTransitionStart(_currentTransition);
-	}
-
-	SKBitmap _currentBitmap;
-	private void DrawImageSource(SKCanvas canvas, ImageSource imageSource)
-	{
-		if(_currentBitmap is not null)
+		else
 		{
-			//if _currentTransition is cropping image draw cropped image centered
-			//else draw image centered
-			if (TransitionGenerator.IsCroppingImage())
-			{
-				canvas.DrawBitmap(_currentBitmap, _currentTransition.DestinyRect, _drawableRect);
-			}
-			else
-			{
-				canvas.DrawBitmap(_currentBitmap, _drawableRect, _drawableRect);
-			}
+			baseScale = (float)info.Height / _currentImage.Height;
 		}
-	}
 
-	private async Task<SKBitmap> LoadImage(ImageSource imageSource)
-	{
-		SKBitmap result = null;
-		if (imageSource is FileImageSource fileImageSource)
+		// Apply interpolated scale
+		float scale = baseScale * effectScale;
+
+		// Calculate centered position with interpolated offset
+		float scaledWidth = _currentImage.Width * scale;
+		float scaledHeight = _currentImage.Height * scale;
+		float dx = (info.Width - scaledWidth) / 2 + (info.Width * position.X);
+		float dy = (info.Height - scaledHeight) / 2 + (info.Height * position.Y);
+
+		_matrix = SKMatrix.CreateScale(scale, scale);
+		_matrix = _matrix.PostConcat(SKMatrix.CreateTranslation(dx, dy));
+
+		// Draw the image
+		canvas.SetMatrix(_matrix);
+		var rect = new SKRect(0, 0, _currentImage.Width, _currentImage.Height);
+		canvas.DrawBitmap(_currentImage, rect, new SKPaint
 		{
-			result = SKBitmap.Decode(fileImageSource.File);
-		}
-		else if (imageSource is StreamImageSource streamImageSource)
-		{
-			var stream = streamImageSource.Stream.Invoke(new CancellationToken());
-			if (stream != null)
-			{
-				result = SKBitmap.Decode(await stream);
-			}
-
-		}
-		else if (imageSource is UriImageSource uriImageSource)
-		{
-			var uri = uriImageSource.Uri;
-			var bytes = await new HttpClient().GetByteArrayAsync(uri);
-			result = SKBitmap.Decode(bytes);
-		}
-		return result;
+			FilterQuality = SKFilterQuality.High,
+			IsAntialias = true
+		});
 	}
 
-	private void FireTransitionStart(Transition transition)
-	{
-		TransitionStart?.Invoke(this, transition);
-	}
-
-	private void FireTransitionEnd(Transition transition)
-	{
-		TransitionEnd?.Invoke(this, transition);
-	}
 
 	public void Pause()
 	{
@@ -248,15 +232,7 @@ public class KBView : SKCanvasView
 	public void Resume()
 	{
 		_paused = false;
-		_lastFrameTime = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond;
 		InvalidateSurface();
 	}
-	public void StartAnimation()
-	{
-		Dispatcher.StartTimer(FrameDelay, () =>
-		{
-			InvalidateSurface();
-			return true;
-		});
-	}
+
 }
