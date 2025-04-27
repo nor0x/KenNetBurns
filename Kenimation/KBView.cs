@@ -34,8 +34,23 @@ public class KBView : SKCanvasView
 public class KBView : SKGLView
 #endif
 {
+
+	private readonly List<SKBitmap> _images = new();
+	private int _currentImageIndex = 0;
+	private bool _isTransitioning = false;
+	private float _transitionDuration = 1000f; // in ms
+
+	public float TransitionDuration
+	{
+		get => _transitionDuration;
+		set => _transitionDuration = value;
+	}
+	private readonly Stopwatch _transitionStopwatch = new();
+
 	private static readonly TimeSpan FrameDelay = TimeSpan.FromMilliseconds(1000 / 60);
+
 	private SKMatrix _matrix = SKMatrix.Identity;
+	private SKMatrix _finalMatrix = SKMatrix.Identity;
 	private bool _paused = false;
 	private SKBitmap _currentImage;
 	private readonly Stopwatch _stopwatch = new();
@@ -111,9 +126,15 @@ public class KBView : SKGLView
 		PaintSurface += OnPaintSurface;
 	}
 
-	public void LoadImage(Stream imageStream)
+	public void LoadImages(IEnumerable<SKBitmap> images)
 	{
-		_currentImage = SKBitmap.Decode(imageStream);
+		_images.Clear();
+		_images.AddRange(images);
+		if (_images.Any())
+		{
+			_currentImage?.Dispose();
+			_currentImage = _images[0];
+		}
 		InvalidateSurface();
 	}
 
@@ -259,6 +280,8 @@ public class KBView : SKGLView
 				break;
 		}
 
+		if (progress > 0.99f) progress = 1.0f;
+
 		canvas.Clear(SKColors.Purple);
 
 		var (effectScale, position) = InterpolateKeyframes(progress, info);
@@ -297,8 +320,52 @@ public class KBView : SKGLView
 		{
 			IsAntialias = true
 		});
+		Debug.WriteLine("progress: " + progress);
+		if (progress >= 1.0f && !_isTransitioning && _images.Count > 1)
+		{
+			_isTransitioning = true;
+			_finalMatrix = _matrix;  // Freeze the final position so it won’t jump
+			_transitionStopwatch.Restart();
+		}
 
-		//Debug.WriteLine($"Progress: {progress}, Scale: {scale}, Position: ({position.X}, {position.Y}), Elapsed: {_stopwatch.ElapsedMilliseconds}ms, Mode: {Mode}");
+		if (_isTransitioning)
+		{
+			// During crossfade, always use the final matrix
+			canvas.SetMatrix(_finalMatrix);
+
+			float t = Math.Min(_transitionStopwatch.ElapsedMilliseconds / _transitionDuration, 1f);
+			int nextIndex = (_currentImageIndex + 1) % _images.Count;
+
+			// Fade out current
+			using (var paint = new SKPaint { IsAntialias = true })
+			{
+				paint.Color = paint.Color.WithAlpha((byte)((1 - t) * 255));
+				canvas.DrawBitmap(_currentImage, new SKRect(0, 0, _currentImage.Width, _currentImage.Height), paint);
+			}
+
+			// Fade in next
+			using (var paint = new SKPaint { IsAntialias = true })
+			{
+				paint.Color = paint.Color.WithAlpha((byte)(t * 255));
+				canvas.DrawBitmap(_images[nextIndex], new SKRect(0, 0, _images[nextIndex].Width, _images[nextIndex].Height), paint);
+			}
+
+			// Once cross-fade is done, switch images and restart Ken Burns from 0
+			if (t >= 1f)
+			{
+				_isTransitioning = false;
+				_currentImageIndex = nextIndex;
+				_currentImage = _images[nextIndex];
+				_stopwatch.Restart();
+			}
+		}
+		else
+		{
+			// Normal Ken Burns drawing
+			canvas.SetMatrix(_matrix);
+			canvas.DrawBitmap(_currentImage, new SKRect(0, 0, _currentImage.Width, _currentImage.Height),
+							  new SKPaint { IsAntialias = true });
+		}
 	}
 
 	public void Dispose()
