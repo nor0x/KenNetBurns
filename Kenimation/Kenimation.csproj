@@ -26,7 +26,6 @@
 	<PackageReleaseNotes>https://github.com/nor0x/Kenimation/releases</PackageReleaseNotes>
 	<PackageProjectUrl>https://github.com/nor0x/Kenimation</PackageProjectUrl>
 	<PackageIconUrl>https://raw.githubusercontent.com/nor0x/Kenimation/main/Art/icon.png</PackageIconUrl>
-	<PackageIcon>icon.png</PackageIcon>
 	<RepositoryUrl>https://github.com/nor0x/Kenimation</RepositoryUrl>
 	<Description>a customizable SkiaSharp-based view for animating still images. It supports cross-fading, keyframed zoom/pan animations, and several playback modes. Inspired by the Ken Burns effect</Description>
 	<PackageTags>Kenimation;Maui;SkiaSharp;Animation;Ken Burns Effect</PackageTags>
@@ -35,6 +34,8 @@
 	<Authors>Joachim Leonfellner</Authors>
 	<Copyright>Copyright 2025 nor0x</Copyright>
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PackageIcon>icon.png</PackageIcon>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
    </PropertyGroup>
 
   <ItemGroup>
@@ -49,6 +50,7 @@
 
 	<ItemGroup>
 		<None Include="..\Art\icon.png" Pack="true" PackagePath="\" />
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 </Project>

@@ -3,6 +3,8 @@
 <img src="https://raw.githubusercontent.com/nor0x/Kenimation/main/Art/icon.png" width="300px" />
 
 [![Publish NuGet](https://github.com/nor0x/Kenimation/actions/workflows/dotnet.yml/badge.svg)](https://github.com/nor0x/Kenimation/actions/workflows/dotnet.yml)
+[![](https://img.shields.io/nuget/v/nor0x.Maui.Kenimation)](https://www.nuget.org/packages/nor0x.Maui.Kenimation)
+[![](https://img.shields.io/nuget/dt/nor0x.Maui.Kenimation)](https://www.nuget.org/packages/nor0x.Maui.Kenimation)
 
 Kenimation is a customizable SkiaSharp-based view for animating still images. It supports cross-fading, keyframed zoom/pan animations, and several playback modes. Inspired by the [Ken Burns effect](https://en.wikipedia.org/wiki/Ken_Burns_effect).
 
@@ -20,9 +22,12 @@ Kenimation is a customizable SkiaSharp-based view for animating still images. It
 
 ### 1️⃣ Create the view in code or XAML:  
    ```xaml
+	  xmlns:kb="clr-namespace:Kenimation;assembly=Kenimation"
+
+
    <ContentPage ...>
        <StackLayout>
-           <local:KBView x:Name="kenView" />
+           <kb:KBView x:Name="kenView" />
        </StackLayout>
    </ContentPage>
    ```
@@ -110,6 +115,14 @@ You can also generate random keyframes with:
 
 ---
 
+## 🖥️ CPU Rendering (KBCPURENDERING)  
+
+If you want to switch Kenimation from GPU-based rendering (`SKGLView`) to CPU-based rendering (`SKCanvasView`), simply define `KBCPURENDERING` in `KBView.cs`.  
+
+This setting can be helpful if you encounter device-specific GPU issues or prefer software rendering for debugging or performance evaluations. By toggling this define, you can easily compare rendering fidelity and performance between the two modes.  
+
+---
+
 ## 🖼️ Example  
 ```csharp
 // Simple usage with defaults
@@ -120,12 +133,5 @@ kenView.StartAnimation();
 
 ---
 
-## 🖥️ CPU Rendering (KBCPURENDERING)  
 
-If you want to switch Kenimation from GPU-based rendering (`SKGLView`) to CPU-based rendering (`SKCanvasView`), simply define `KBCPURENDERING` in `KBView.cs`.  
-
-This setting can be helpful if you encounter device-specific GPU issues or prefer software rendering for debugging or performance evaluations. By toggling this define, you can easily compare rendering fidelity and performance between the two modes.  
-
----
-
-The KenView will automatically animate each image for 5 seconds, then cross-fade to the next using a 1-second transition, with a reversing playback. Adjust the animation parameters, playback mode, or keyframes as needed.  
+The kenView will automatically animate each image for 5 seconds, then cross-fade to the next using a 1-second transition, with a reversing playback. Adjust the animation parameters, playback mode, or keyframes as needed.  
