@@ -29,7 +29,7 @@ jobs:
     - name: Publish NuGet
       # You may pin to the exact commit or the version.
       # uses: brandedoutcast/publish-nuget@c12b8546b67672ee38ac87bea491ac94a587f7cc
-      uses: alirezanet/publish-nuget@v3
+      uses: alirezanet/publish-nuget@v3.1.0
       with:
         # Filepath of the project to be packaged, relative to root of repository
         PROJECT_FILE_PATH: Kenimation/Kenimation.csproj
