@@ -1,4 +1,4 @@
-﻿#define CPU
+﻿#define KBCPURENDERING
 using Microsoft.Maui.Controls;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
@@ -28,7 +28,7 @@ public enum AnimationMode
 }
 
 
-#if CPU
+#if KBCPURENDERING
 public class KBView : SKCanvasView
 #else
 public class KBView : SKGLView
@@ -38,7 +38,7 @@ public class KBView : SKGLView
 	private readonly List<SKBitmap> _images = new();
 	private int _currentImageIndex = 0;
 	private bool _isTransitioning = false;
-	private float _transitionDuration = 1000f; // in ms
+	private float _transitionDuration = 1000f;
 
 	public float TransitionDuration
 	{
@@ -46,7 +46,7 @@ public class KBView : SKGLView
 		set => _transitionDuration = value;
 	}
 	private readonly Stopwatch _transitionStopwatch = new();
-	private readonly Stopwatch _nextStopwatch = new(); // Tracks Ken Burns for the incoming image
+	private readonly Stopwatch _nextStopwatch = new();
 
 
 	private static readonly TimeSpan FrameDelay = TimeSpan.FromMilliseconds(1000 / 60);
@@ -190,7 +190,6 @@ public class KBView : SKGLView
 		float halfHeight = (info.Height - scaledHeight) / 2f;
 
 		// If the image would move out of view, clamp
-		// (for a real bounce, track velocity and invert it here)
 		float maxX = (info.Width - scaledWidth) / (float)info.Width;
 		float maxY = (info.Height - scaledHeight) / (float)info.Height;
 
@@ -229,7 +228,7 @@ public class KBView : SKGLView
 		InvalidateSurface();
 	}
 
-#if CPU
+#if KBCPURENDERING
 	private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
 #else
 
@@ -239,7 +238,7 @@ public class KBView : SKGLView
 		if (_currentImage == null) return;
 
 		var canvas = e.Surface.Canvas;
-#if CPU
+#if KBCPURENDERING
 		var info = e.Info;
 #else
 		var info = new SKImageInfo(e.BackendRenderTarget.Width, e.BackendRenderTarget.Height);
@@ -288,8 +287,6 @@ public class KBView : SKGLView
 
 		var (effectScale, position) = InterpolateKeyframes(progress, info);
 
-
-		// Calculate aspect ratios and base scale as before
 		float viewAspect = (float)info.Width / info.Height;
 		float imageAspect = (float)_currentImage.Width / _currentImage.Height;
 
@@ -303,10 +300,8 @@ public class KBView : SKGLView
 			baseScale = (float)info.Height / _currentImage.Height;
 		}
 
-		// Apply interpolated scale
 		float scale = baseScale * effectScale;
 
-		// Calculate centered position with interpolated offset
 		float scaledWidth = _currentImage.Width * scale;
 		float scaledHeight = _currentImage.Height * scale;
 		float dx = (info.Width - scaledWidth) / 2 + (info.Width * position.X);
@@ -315,26 +310,25 @@ public class KBView : SKGLView
 		_matrix = SKMatrix.CreateScale(scale, scale);
 		_matrix = _matrix.PostConcat(SKMatrix.CreateTranslation(dx, dy));
 
-		// Draw the image
 		canvas.SetMatrix(_matrix);
 		var rect = new SKRect(0, 0, _currentImage.Width, _currentImage.Height);
 		canvas.DrawBitmap(_currentImage, rect, new SKPaint
 		{
 			IsAntialias = true
 		});
-		Debug.WriteLine("progress: " + progress);
+
 		if (progress >= 1.0f && !_isTransitioning && _images.Count > 1)
 		{
 			_isTransitioning = true;
 			_finalMatrix = _matrix;
 			_transitionStopwatch.Restart();
 			_nextStopwatch.Reset();
-			_nextStopwatch.Start(); // Start animation for next image here
+			_nextStopwatch.Start();
 		}
 
 		if (_isTransitioning)
 		{
-			// Use final matrix for fading out the current image
+			// Cross-fade to the next image
 			canvas.SetMatrix(_finalMatrix);
 			float t = Math.Min(_transitionStopwatch.ElapsedMilliseconds / _transitionDuration, 1f);
 			int nextIndex = (_currentImageIndex + 1) % _images.Count;
@@ -345,7 +339,6 @@ public class KBView : SKGLView
 				canvas.DrawBitmap(_currentImage, new SKRect(0, 0, _currentImage.Width, _currentImage.Height), paint);
 			}
 
-			// Compute Ken Burns for the next image using _nextStopwatch
 			float nextElapsed = _nextStopwatch.ElapsedMilliseconds % (_animationDuration * 2);
 			float nextProgress;
 			switch (Mode)
@@ -389,7 +382,7 @@ public class KBView : SKGLView
 				_currentImageIndex = nextIndex;
 				_currentImage = _images[nextIndex];
 
-				// If needed, adjust your first keyframe
+				// If needed, adjust your keyframe
 				if (_keyframes.Any())
 				{
 					_keyframes[0].Scale = nextScaleFactor;
@@ -397,15 +390,14 @@ public class KBView : SKGLView
 					_keyframes[0].Time = 0f;
 				}
 
-				// Swap to the new image's stopwatch
 				_stopwatch.Stop();
 				_stopwatch.Reset();
-				_stopwatch = _nextStopwatch; // Continue Ken Burns from the next image's progress
+				_stopwatch = _nextStopwatch; // Continue animation from the next image's progress
 			}
 		}
 		else
 		{
-			// Normal Ken Burns drawing
+			// Draw the current image without transition
 			canvas.SetMatrix(_matrix);
 			canvas.DrawBitmap(_currentImage, new SKRect(0, 0, _currentImage.Width, _currentImage.Height),
 							  new SKPaint { IsAntialias = true });
