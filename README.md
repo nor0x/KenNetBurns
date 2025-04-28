@@ -2,6 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/nor0x/Kenimation/main/Art/icon.png" width="300px" />
 
+[![Publish NuGet](https://github.com/nor0x/Kenimation/actions/workflows/dotnet.yml/badge.svg)](https://github.com/nor0x/Kenimation/actions/workflows/dotnet.yml)
 
 Kenimation is a customizable SkiaSharp-based view for animating still images. It supports cross-fading, keyframed zoom/pan animations, and several playback modes. Inspired by the [Ken Burns effect](https://en.wikipedia.org/wiki/Ken_Burns_effect).
 
