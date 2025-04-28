@@ -11,11 +11,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get Version via powershell
-      id: get_version
+
+    - name: Update Version in Kenimation.csproj
+      id: update_version
       run: |
-        $version = [System.Version]::Parse((Get-Content Kenimation/Kenimation.csproj | Select-String -Pattern "<Version>(.*)</Version>").Matches.Groups[1].Value)
+        $version = Get-Content Kenimation/version.txt
+        (Get-Content Kenimation/Kenimation.csproj) -replace '<AssemblyVersion>.*</AssemblyVersion>', "<AssemblyVersion>$version</AssemblyVersion>" | Set-Content Kenimation/Kenimation.csproj
+        (Get-Content Kenimation/Kenimation.csproj) -replace '<AssemblyFileVersion>.*</AssemblyFileVersion>', "<AssemblyFileVersion>$version</AssemblyFileVersion>" | Set-Content Kenimation/Kenimation.csproj
+        (Get-Content Kenimation/Kenimation.csproj) -replace '<Version>.*</Version>', "<Version>$version</Version>" | Set-Content Kenimation/Kenimation.csproj
         $env:CURRENT_VERSION = $version.ToString()
+        echo "::set-output name=CURRENT_VERSION::$env:CURRENT_VERSION"
+        
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
