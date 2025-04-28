@@ -331,7 +331,17 @@ public class KBView : SKGLView
 			// Cross-fade to the next image
 			canvas.SetMatrix(_finalMatrix);
 			float t = Math.Min(_transitionStopwatch.ElapsedMilliseconds / _transitionDuration, 1f);
-			int nextIndex = (_currentImageIndex + 1) % _images.Count;
+
+			// Adjust nextIndex based on whether we're reversing
+			int nextIndex;
+			if (Mode == AnimationMode.ReverseAndLoop && _isReversing)
+			{
+				nextIndex = (_currentImageIndex - 1 + _images.Count) % _images.Count;
+			}
+			else
+			{
+				nextIndex = (_currentImageIndex + 1) % _images.Count;
+			}
 
 			using (var paint = new SKPaint { IsAntialias = true })
 			{
@@ -390,9 +400,9 @@ public class KBView : SKGLView
 					_keyframes[0].Time = 0f;
 				}
 
-				_stopwatch.Stop();
-				_stopwatch.Reset();
-				_stopwatch = _nextStopwatch; // Continue animation from the next image's progress
+				// _stopwatch.Stop();
+				// _stopwatch.Reset();
+				// _stopwatch = _nextStopwatch; // Continue animation from the next image's progress
 			}
 		}
 		else
