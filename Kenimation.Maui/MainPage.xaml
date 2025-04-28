@@ -1,26 +1,34 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-			 xmlns:kb="clr-namespace:Kenimation;assembly=Kenimation"
-			 Shell.NavBarIsVisible="False"
-			 Background="White"
-             x:Class="Kenimation.Maui.MainPage">
+	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+	xmlns:kb="clr-namespace:Kenimation;assembly=Kenimation"
+	Shell.NavBarIsVisible="False"
+	Background="LightGray"
+	x:Class="Kenimation.Maui.MainPage">
 
 	<VerticalStackLayout Margin="0,12,0,0" Spacing="12">
-		<Label Text="Ken Burns Effect" HorizontalOptions="Center" VerticalOptions="End" FontSize="20" />
-        <Border Stroke="Orange" StrokeThickness="2" WidthRequest="600" HeightRequest="400" >
-		<kb:KBView x:Name="kbView"/>
-        </Border>
-        <HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
-			<Button Text="New Image" Clicked="NewImage_Clicked" />
-			<Button x:Name="StateToggleButton" Text="Pause" Clicked="ToggleState_Clicked" />
+		<Label Text="Kenimation.MAUI" HorizontalOptions="Center" FontAttributes="Bold" FontSize="32"
+			TextColor="Black" />
+		<Border Stroke="LimeGreen" StrokeThickness="2" WidthRequest="600" HeightRequest="400">
+			<kb:KBView x:Name="kbView" />
+		</Border>
+		<HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
+			<Button Text="New Image" Clicked="NewImage_Clicked" BackgroundColor="LimeGreen"
+				TextColor="Black" />
+			<Button x:Name="StateToggleButton" Text="Pause" Clicked="ToggleState_Clicked"
+				BackgroundColor="LimeGreen" TextColor="Black" />
 		</HorizontalStackLayout>
 		<HorizontalStackLayout HorizontalOptions="Center">
-		<Entry x:Name="UrlEntry" WidthRequest="400" Placeholder="enter image url..." />
-			<Button Text="Load Image" Clicked="LoadImage_Clicked" />
+			<Entry x:Name="UrlEntry" WidthRequest="400" Placeholder="enter image url..."
+				Background="LightGreen" TextColor="Black" />
+			<Button Text="Load Image" Clicked="LoadImage_Clicked" BackgroundColor="LimeGreen"
+				TextColor="Black" />
 		</HorizontalStackLayout>
-        <Slider Minimum="1000" Maximum="60000" Value="5000" WidthRequest="500" ValueChanged="DurationSlider_ValueChanged" />
-        <Label x:Name="DurationLabel" Text="Duration: 5000" HorizontalOptions="Center" />
-        <Label x:Name="StatusLabel" Text="..."  TextColor="Black" HorizontalOptions="Center" />
+		<Slider Minimum="1000" Maximum="60000" ThumbColor="LimeGreen" Value="5000"
+			WidthRequest="500" ValueChanged="DurationSlider_ValueChanged"
+			MinimumTrackColor="LightGreen" MaximumTrackColor="DarkGray" />
+		<Label x:Name="DurationLabel" Text="Duration: 5000" TextColor="Black"
+			HorizontalOptions="Center" />
+		<Label x:Name="StatusLabel" Text="..." TextColor="Black" HorizontalOptions="Center" />
 	</VerticalStackLayout>
 </ContentPage>

@@ -33,22 +33,40 @@ public partial class MainPage : ContentPage
 		kbView.Dispose();
 	}
 
-	private async void NewImage_Clicked(object sender, EventArgs e)
-	{
-		kbView.Mode = AnimationMode.ReverseAndLoop;
+    private async void NewImage_Clicked(object sender, EventArgs e)
+    {
+        kbView.Mode = AnimationMode.ReverseAndLoop;
 
-		var randomIndex = Random.Shared.Next(_images.Count);
-		var randomImageUrl = _images[randomIndex];
-		var stream = await GetImageStream(randomImageUrl);
-		kbView.LoadImage(stream);
+        // Generate random image URLs
+        var randomImageCount = Random.Shared.Next(1, _images.Count);
+        var randomImageUrls = Enumerable.Range(0, randomImageCount)
+        .Select(_ => _images[Random.Shared.Next(_images.Count)])
+        .ToList();
 
-		var randomKeyframes = KBView.GetRandomSmoothKeyframes(Random.Shared.Next(2, 20));
+        // Load images in parallel
+        var imageTasks = randomImageUrls.Select(async imageUrl =>
+        {
+            var imageStream = await GetImageStream(imageUrl);
+            return imageStream != null ? SKBitmap.Decode(imageStream) : null;
+        }).ToList();
 
-		StatusLabel.Text = $"Random Keyframes:\n{string.Join("\n", randomKeyframes.Select(k => k.ToString()))}";
-		kbView.AnimationDuration = 20000;
-		kbView.SetKeyframes(randomKeyframes);
-		kbView.StartAnimation();
-	}
+        var imageList = (await Task.WhenAll(imageTasks)).Where(image => image != null).ToList();
+
+        if (imageList.Count == 0)
+        {
+            StatusLabel.Text = "Failed to load images.";
+            return;
+        }
+
+        kbView.LoadImages(imageList);
+
+        var randomKeyframes = KBView.GetRandomSmoothKeyframes(Random.Shared.Next(2, 5));
+
+        StatusLabel.Text = $"Random Keyframes:\n{string.Join("\n", randomKeyframes.Select(k => k.ToString()))}";
+        kbView.AnimationDuration = 5000;
+        kbView.SetKeyframes(randomKeyframes);
+        kbView.StartAnimation();
+    }
 
 	private void ToggleState_Clicked(object sender, EventArgs e)
 	{
@@ -81,9 +99,16 @@ public partial class MainPage : ContentPage
 				StatusLabel.Text = "Failed to load image.";
 				return;
 			}
-			kbView.LoadImage(stream);
 
-			var randomKeyframes = KBView.GetRandomSmoothKeyframes(Random.Shared.Next(2, 20));
+			var image = SKBitmap.Decode(stream);
+			if (image == null)
+            {
+				StatusLabel.Text = "Failed to decode image.";
+				return;
+            }
+			kbView.LoadImages(new List<SKBitmap> { image });
+
+            var randomKeyframes = KBView.GetRandomSmoothKeyframes(Random.Shared.Next(2, 20));
 
 			StatusLabel.Text = $"Random Keyframes:\n{string.Join("\n", randomKeyframes.Select(k => k.ToString()))}";
 			kbView.AnimationDuration = 20000;

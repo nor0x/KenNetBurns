@@ -1,4 +1,4 @@
-﻿#define CPU
+﻿#define KBCPURENDERING
 using Microsoft.Maui.Controls;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
@@ -28,17 +28,34 @@ public enum AnimationMode
 }
 
 
-#if CPU
+#if KBCPURENDERING
 public class KBView : SKCanvasView
 #else
 public class KBView : SKGLView
 #endif
 {
+
+	private readonly List<SKBitmap> _images = new();
+	private int _currentImageIndex = 0;
+	private bool _isTransitioning = false;
+	private float _transitionDuration = 1000f;
+
+	public float TransitionDuration
+	{
+		get => _transitionDuration;
+		set => _transitionDuration = value;
+	}
+	private readonly Stopwatch _transitionStopwatch = new();
+	private readonly Stopwatch _nextStopwatch = new();
+
+
 	private static readonly TimeSpan FrameDelay = TimeSpan.FromMilliseconds(1000 / 60);
+
 	private SKMatrix _matrix = SKMatrix.Identity;
+	private SKMatrix _finalMatrix = SKMatrix.Identity;
 	private bool _paused = false;
 	private SKBitmap _currentImage;
-	private readonly Stopwatch _stopwatch = new();
+	private Stopwatch _stopwatch = new();
 	private IDispatcherTimer _timer;
 	private int _animationDuration = 5000;
 	public int AnimationDuration
@@ -111,9 +128,15 @@ public class KBView : SKGLView
 		PaintSurface += OnPaintSurface;
 	}
 
-	public void LoadImage(Stream imageStream)
+	public void LoadImages(IEnumerable<SKBitmap> images)
 	{
-		_currentImage = SKBitmap.Decode(imageStream);
+		_images.Clear();
+		_images.AddRange(images);
+		if (_images.Any())
+		{
+			_currentImage?.Dispose();
+			_currentImage = _images[0];
+		}
 		InvalidateSurface();
 	}
 
@@ -167,7 +190,6 @@ public class KBView : SKGLView
 		float halfHeight = (info.Height - scaledHeight) / 2f;
 
 		// If the image would move out of view, clamp
-		// (for a real bounce, track velocity and invert it here)
 		float maxX = (info.Width - scaledWidth) / (float)info.Width;
 		float maxY = (info.Height - scaledHeight) / (float)info.Height;
 
@@ -206,7 +228,7 @@ public class KBView : SKGLView
 		InvalidateSurface();
 	}
 
-#if CPU
+#if KBCPURENDERING
 	private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
 #else
 
@@ -216,7 +238,7 @@ public class KBView : SKGLView
 		if (_currentImage == null) return;
 
 		var canvas = e.Surface.Canvas;
-#if CPU
+#if KBCPURENDERING
 		var info = e.Info;
 #else
 		var info = new SKImageInfo(e.BackendRenderTarget.Width, e.BackendRenderTarget.Height);
@@ -259,12 +281,12 @@ public class KBView : SKGLView
 				break;
 		}
 
+		if (progress > 0.99f) progress = 1.0f;
+
 		canvas.Clear(SKColors.Purple);
 
 		var (effectScale, position) = InterpolateKeyframes(progress, info);
 
-
-		// Calculate aspect ratios and base scale as before
 		float viewAspect = (float)info.Width / info.Height;
 		float imageAspect = (float)_currentImage.Width / _currentImage.Height;
 
@@ -278,10 +300,8 @@ public class KBView : SKGLView
 			baseScale = (float)info.Height / _currentImage.Height;
 		}
 
-		// Apply interpolated scale
 		float scale = baseScale * effectScale;
 
-		// Calculate centered position with interpolated offset
 		float scaledWidth = _currentImage.Width * scale;
 		float scaledHeight = _currentImage.Height * scale;
 		float dx = (info.Width - scaledWidth) / 2 + (info.Width * position.X);
@@ -290,7 +310,6 @@ public class KBView : SKGLView
 		_matrix = SKMatrix.CreateScale(scale, scale);
 		_matrix = _matrix.PostConcat(SKMatrix.CreateTranslation(dx, dy));
 
-		// Draw the image
 		canvas.SetMatrix(_matrix);
 		var rect = new SKRect(0, 0, _currentImage.Width, _currentImage.Height);
 		canvas.DrawBitmap(_currentImage, rect, new SKPaint
@@ -298,7 +317,111 @@ public class KBView : SKGLView
 			IsAntialias = true
 		});
 
-		//Debug.WriteLine($"Progress: {progress}, Scale: {scale}, Position: ({position.X}, {position.Y}), Elapsed: {_stopwatch.ElapsedMilliseconds}ms, Mode: {Mode}");
+		if (progress >= 1.0f && !_isTransitioning && _images.Count > 1)
+		{
+			_isTransitioning = true;
+			_finalMatrix = _matrix;
+			_transitionStopwatch.Restart();
+			_nextStopwatch.Reset();
+			_nextStopwatch.Start();
+		}
+
+		if (_isTransitioning)
+		{
+			// Cross-fade to the next image
+			canvas.SetMatrix(_finalMatrix);
+			float t = Math.Min(_transitionStopwatch.ElapsedMilliseconds / _transitionDuration, 1f);
+			int nextIndex = (_currentImageIndex + 1) % _images.Count;
+
+			using (var paint = new SKPaint { IsAntialias = true })
+			{
+				paint.Color = paint.Color.WithAlpha((byte)((1 - t) * 255));
+				canvas.DrawBitmap(_currentImage, new SKRect(0, 0, _currentImage.Width, _currentImage.Height), paint);
+			}
+
+			float nextElapsed = _nextStopwatch.ElapsedMilliseconds % (_animationDuration * 2);
+			float nextProgress;
+			switch (Mode)
+			{
+				case AnimationMode.ReverseAndLoop:
+					bool reversingNow = nextElapsed > _animationDuration;
+					nextProgress = nextElapsed / _animationDuration;
+					if (reversingNow) nextProgress = 2.0f - nextProgress;
+					break;
+				case AnimationMode.PlayOnce:
+				case AnimationMode.PlayOnceAndStop:
+				case AnimationMode.Loop:
+				default:
+					nextProgress = (nextElapsed % _animationDuration) / _animationDuration;
+					break;
+			}
+
+			var (nextScaleFactor, nextPos) = InterpolateKeyframes(nextProgress, info);
+			float nextBaseScale = GetBaseScale(info, _images[nextIndex]);
+			float scaledNext = nextBaseScale * nextScaleFactor;
+			float nextW = _images[nextIndex].Width * scaledNext;
+			float nextH = _images[nextIndex].Height * scaledNext;
+			float nextDx = (info.Width - nextW) / 2 + (info.Width * nextPos.X);
+			float nextDy = (info.Height - nextH) / 2 + (info.Height * nextPos.Y);
+
+			var nextMatrix = SKMatrix.CreateScale(scaledNext, scaledNext);
+			nextMatrix = nextMatrix.PostConcat(SKMatrix.CreateTranslation(nextDx, nextDy));
+
+			// Fade in the next image
+			canvas.SetMatrix(nextMatrix);
+			using (var paint = new SKPaint { IsAntialias = true })
+			{
+				paint.Color = paint.Color.WithAlpha((byte)(t * 255));
+				canvas.DrawBitmap(_images[nextIndex], new SKRect(0, 0, _images[nextIndex].Width, _images[nextIndex].Height), paint);
+			}
+
+			// Finalize switching once cross-fade completes
+			if (t >= 1f)
+			{
+				_isTransitioning = false;
+				_currentImageIndex = nextIndex;
+				_currentImage = _images[nextIndex];
+
+				// If needed, adjust your keyframe
+				if (_keyframes.Any())
+				{
+					_keyframes[0].Scale = nextScaleFactor;
+					_keyframes[0].Position = nextPos;
+					_keyframes[0].Time = 0f;
+				}
+
+				_stopwatch.Stop();
+				_stopwatch.Reset();
+				_stopwatch = _nextStopwatch; // Continue animation from the next image's progress
+			}
+		}
+		else
+		{
+			// Draw the current image without transition
+			canvas.SetMatrix(_matrix);
+			canvas.DrawBitmap(_currentImage, new SKRect(0, 0, _currentImage.Width, _currentImage.Height),
+							  new SKPaint { IsAntialias = true });
+		}
+	}
+
+	private SKMatrix GetCenteredMatrix(SKImageInfo info, SKBitmap bmp)
+	{
+		// Calculate the scale so the whole image fits while maintaining aspect ratio
+		float viewAspect = (float)info.Width / info.Height;
+		float imageAspect = (float)bmp.Width / bmp.Height;
+		float baseScale = viewAspect > imageAspect
+			? (float)info.Width / bmp.Width
+			: (float)info.Height / bmp.Height;
+
+		// Center the image
+		float scaledWidth = bmp.Width * baseScale;
+		float scaledHeight = bmp.Height * baseScale;
+		float dx = (info.Width - scaledWidth) / 2f;
+		float dy = (info.Height - scaledHeight) / 2f;
+
+		var matrix = SKMatrix.CreateScale(baseScale, baseScale);
+		matrix = matrix.PostConcat(SKMatrix.CreateTranslation(dx, dy));
+		return matrix;
 	}
 
 	public void Dispose()
