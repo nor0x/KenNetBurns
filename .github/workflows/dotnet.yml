@@ -15,13 +15,13 @@ jobs:
     - name: Update Version in Kenimation.csproj
       id: update_version
       run: |
-        $version = Get-Content Kenimation/version.txt
+        $version = Get-Content version.txt
         (Get-Content Kenimation/Kenimation.csproj) -replace '<AssemblyVersion>.*</AssemblyVersion>', "<AssemblyVersion>$version</AssemblyVersion>" | Set-Content Kenimation/Kenimation.csproj
         (Get-Content Kenimation/Kenimation.csproj) -replace '<AssemblyFileVersion>.*</AssemblyFileVersion>', "<AssemblyFileVersion>$version</AssemblyFileVersion>" | Set-Content Kenimation/Kenimation.csproj
         (Get-Content Kenimation/Kenimation.csproj) -replace '<Version>.*</Version>', "<Version>$version</Version>" | Set-Content Kenimation/Kenimation.csproj
         $env:CURRENT_VERSION = $version.ToString()
         echo "::set-output name=CURRENT_VERSION::$env:CURRENT_VERSION"
-        
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
