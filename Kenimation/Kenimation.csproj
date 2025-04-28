@@ -1,21 +1,41 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<TargetFrameworks>net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>    
-	<ImplicitUsings>enable</ImplicitUsings>
-	<Nullable>enable</Nullable>
-	<UseMaui>true</UseMaui>
-	  <SingleProject>true</SingleProject>
-	  <ImplicitUsings>enable</ImplicitUsings>
-
-	  <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.4</SupportedOSPlatformVersion>
-	  <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
-	  <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
-	  <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
-	  <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
-	  <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<UseMaui>true</UseMaui>
+		<SingleProject>true</SingleProject>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.4</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
   </PropertyGroup>
+
+  <!-- NUGET INFO -->
+   <PropertyGroup>
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	<AssemblyVersion>1.0.0</AssemblyVersion>
+	<AssemblyFileVersion>1.0.0</AssemblyFileVersion>
+	<Version>1.0.0</Version>
+	<Title>nor0x.Maui.Kenimation</Title>
+	<PackageId>nor0x.Maui.Kenimation</PackageId>
+	<PackageReleaseNotes>https://github.com/nor0x/Kenimation/releases</PackageReleaseNotes>
+	<PackageProjectUrl>https://github.com/nor0x/Kenimation</PackageProjectUrl>
+	<PackageIconUrl>https://raw.githubusercontent.com/nor0x/Kenimation/main/Art/icon.png</PackageIconUrl>
+	<PackageIcon>icon.png</PackageIcon>
+	<RepositoryUrl>https://github.com/nor0x/Kenimation</RepositoryUrl>
+	<Description>a customizable SkiaSharp-based view for animating still images. It supports cross-fading, keyframed zoom/pan animations, and several playback modes. Inspired by the Ken Burns effect</Description>
+	<PackageTags>Kenimation;Maui;SkiaSharp;Animation;Ken Burns Effect</PackageTags>
+	<Summary>a customizable SkiaSharp-based view for animating still images. It supports cross-fading, keyframed zoom/pan animations, and several playback modes. Inspired by the Ken Burns effect</Summary>
+	<Owners>Joachim Leonfellner</Owners>
+	<Authors>Joachim Leonfellner</Authors>
+	<Copyright>Copyright 2025 nor0x</Copyright>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+   </PropertyGroup>
 
   <ItemGroup>
 	  <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.60" />
@@ -26,5 +46,9 @@
   <ItemGroup>
     <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.116.1" />
   </ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\Art\icon.png" Pack="true" PackagePath="\" />
+	</ItemGroup>
 
 </Project>

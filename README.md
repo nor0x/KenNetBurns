@@ -1,4 +1,7 @@
 # Kenimation 🖼️→📼
+
+![Kenimation](https://raw.githubusercontent.com/nor0x/Kenimation/main/Art/icon.png)
+
 Kenimation is a customizable SkiaSharp-based view for animating still images. It supports cross-fading, keyframed zoom/pan animations, and several playback modes. Inspired by the [Ken Burns effect](https://en.wikipedia.org/wiki/Ken_Burns_effect).
 
 ---
