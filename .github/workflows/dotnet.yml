@@ -1,6 +1,9 @@
 name: Publish NuGet
 
 on:
+  push:
+    paths:
+      - version.txt
   workflow_dispatch:
 
 
